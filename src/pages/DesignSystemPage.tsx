@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AuthDialog from '../components/AuthDialog';
+import UserMenu from '../components/UserMenu';
+import { useAuth } from '../contexts/useAuth';
 
 interface DesignSystem {
   id: string;
@@ -18,8 +20,8 @@ export default function DesignSystemPage() {
   const { id } = useParams<{ id: string }>();
   const [designSystem, setDesignSystem] = useState<DesignSystem | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false); // Mock auth state
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     // Mock API call - replace with actual API
@@ -80,7 +82,7 @@ export default function DesignSystemPage() {
               Back to Explore
             </Link>
             <div className="flex items-center gap-3">
-              {isAuthenticated && (
+              {user && (
                 <Link
                   to={`/create/${designSystem.id}`}
                   className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-2.5 rounded-xl font-medium hover:shadow-lg hover:scale-105 transition-all duration-200"
@@ -91,13 +93,8 @@ export default function DesignSystemPage() {
                   Remix
                 </Link>
               )}
-              {isAuthenticated ? (
-                <button 
-                  onClick={() => setIsAuthenticated(false)}
-                  className="text-gray-600 hover:text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  Sign Out
-                </button>
+              {user ? (
+                <UserMenu />
               ) : (
                 <button 
                   onClick={() => setIsAuthDialogOpen(true)}
@@ -141,7 +138,7 @@ export default function DesignSystemPage() {
             </div>
           </div>
           
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 mb-6">
             {designSystem.tags.map((tag) => (
               <span
                 key={tag}
@@ -150,6 +147,45 @@ export default function DesignSystemPage() {
                 {tag}
               </span>
             ))}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-4">
+            {user ? (
+              <Link
+                to={`/create/${designSystem.id}`}
+                className="inline-flex items-center bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-3 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Remix This Design
+              </Link>
+            ) : (
+              <button
+                onClick={() => setIsAuthDialogOpen(true)}
+                className="inline-flex items-center bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-3 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Sign In to Remix
+              </button>
+            )}
+            
+            <button className="inline-flex items-center text-gray-600 hover:text-gray-900 px-6 py-3 rounded-xl border-2 border-gray-200 hover:border-gray-300 font-medium transition-colors">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+              Like
+            </button>
+
+            <button className="inline-flex items-center text-gray-600 hover:text-gray-900 px-6 py-3 rounded-xl border-2 border-gray-200 hover:border-gray-300 font-medium transition-colors">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+              </svg>
+              Share
+            </button>
           </div>
         </div>
 
@@ -160,7 +196,7 @@ export default function DesignSystemPage() {
             <p className="text-gray-600">Explore the design system components</p>
           </div>
           
-          {isAuthenticated ? (
+          {user ? (
             <div className="p-8">
               <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl p-8 border border-slate-200">
                 <div className="flex items-center mb-6">
@@ -251,7 +287,7 @@ export default function DesignSystemPage() {
       <AuthDialog
         isOpen={isAuthDialogOpen}
         onClose={() => setIsAuthDialogOpen(false)}
-        onAuthSuccess={() => setIsAuthenticated(true)}
+        onAuthSuccess={() => setIsAuthDialogOpen(false)}
       />
     </div>
   );

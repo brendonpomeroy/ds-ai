@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from '../contexts/useAuth';
 
 interface AuthDialogProps {
   isOpen: boolean;
@@ -11,31 +12,38 @@ export default function AuthDialog({ isOpen, onClose, onAuthSuccess }: AuthDialo
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { signIn, signUp } = useAuth();
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
-      // Mock auth - replace with actual Supabase auth
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       if (mode === 'signin') {
-        // Mock sign in
-        console.log('Signing in:', { email, password });
+        const { error } = await signIn(email, password);
+        if (error) {
+          setError(error.message);
+          return;
+        }
       } else {
-        // Mock sign up
-        console.log('Signing up:', { email, password, username });
+        const { error } = await signUp(email, password, username, firstName);
+        if (error) {
+          setError(error.message);
+          return;
+        }
       }
       
       onAuthSuccess();
       onClose();
       resetForm();
     } catch {
-      alert('Authentication failed. Please try again.');
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -45,6 +53,8 @@ export default function AuthDialog({ isOpen, onClose, onAuthSuccess }: AuthDialo
     setEmail('');
     setPassword('');
     setUsername('');
+    setFirstName('');
+    setError(null);
     setMode('signin');
   };
 
@@ -76,6 +86,12 @@ export default function AuthDialog({ isOpen, onClose, onAuthSuccess }: AuthDialo
             </button>
           </div>
 
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-bold text-gray-800 mb-2 uppercase tracking-wide">
@@ -93,20 +109,35 @@ export default function AuthDialog({ isOpen, onClose, onAuthSuccess }: AuthDialo
             </div>
 
             {mode === 'signup' && (
-              <div>
-                <label htmlFor="username" className="block text-sm font-bold text-gray-800 mb-2 uppercase tracking-wide">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  id="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  placeholder="Choose a username"
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200"
-                />
-              </div>
+              <>
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-bold text-gray-800 mb-2 uppercase tracking-wide">
+                    First Name (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    id="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Enter your first name"
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="username" className="block text-sm font-bold text-gray-800 mb-2 uppercase tracking-wide">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    id="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    placeholder="Choose a username"
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200"
+                  />
+                </div>
+              </>
             )}
 
             <div>

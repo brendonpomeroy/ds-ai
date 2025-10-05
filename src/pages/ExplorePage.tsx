@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AuthDialog from '../components/AuthDialog';
+import UserMenu from '../components/UserMenu';
+import { useAuth } from '../contexts/useAuth';
 
 interface DesignSystem {
   id: string;
@@ -16,7 +18,7 @@ export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'popular'>('newest');
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user } = useAuth();
 
   // Mock data for now - will be replaced with actual API calls
   useEffect(() => {
@@ -63,13 +65,8 @@ export default function ExplorePage() {
               >
                 Create New
               </Link>
-              {isAuthenticated ? (
-                <button 
-                  onClick={() => setIsAuthenticated(false)}
-                  className="text-gray-600 hover:text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  Sign Out
-                </button>
+              {user ? (
+                <UserMenu />
               ) : (
                 <button 
                   onClick={() => setIsAuthDialogOpen(true)}
@@ -193,7 +190,7 @@ export default function ExplorePage() {
       <AuthDialog
         isOpen={isAuthDialogOpen}
         onClose={() => setIsAuthDialogOpen(false)}
-        onAuthSuccess={() => setIsAuthenticated(true)}
+        onAuthSuccess={() => setIsAuthDialogOpen(false)}
       />
     </div>
   );
