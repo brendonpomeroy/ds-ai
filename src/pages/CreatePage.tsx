@@ -27,19 +27,24 @@ export default function CreatePage() {
   
   const [systemName, setSystemName] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [customPrompt, setCustomPrompt] = useState('');
   const [creativityScale, setCreativityScale] = useState(50);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedTokens, setGeneratedTokens] = useState<object | null>(null);
   const [remainingGenerations, setRemainingGenerations] = useState(10);
+
+  const MAX_PROMPT_LENGTH = 500;
 
   // Load remix data if remixId is provided
   useEffect(() => {
     if (remixId) {
       // Mock loading remix data - replace with actual API call
       const mockRemixData = {
-        promptTags: ['minimalist', 'sans serif', 'pastel tones']
+        promptTags: ['minimalist', 'sans serif', 'pastel tones'],
+        originalPrompt: 'minimalist, sans serif, pastel tones'
       };
       setSelectedTags(mockRemixData.promptTags);
+      setCustomPrompt(mockRemixData.originalPrompt);
       setCreativityScale(50); // Reset to default
       // systemName stays empty for remix
     }
@@ -47,15 +52,42 @@ export default function CreatePage() {
 
   const handleTagToggle = (tag: string) => {
     if (selectedTags.includes(tag)) {
+      // Remove tag from selected tags
       setSelectedTags(selectedTags.filter(t => t !== tag));
+      // Remove tag from prompt
+      const tagPattern = new RegExp(`\\b${tag}\\b,?\\s*`, 'gi');
+      const updatedPrompt = customPrompt.replace(tagPattern, '').replace(/,\s*$/, '').trim();
+      setCustomPrompt(updatedPrompt);
     } else if (selectedTags.length < 5) {
+      // Add tag to selected tags
       setSelectedTags([...selectedTags, tag]);
+      // Add tag to prompt
+      const newPromptText = customPrompt.trim() ? `${customPrompt.trim()}, ${tag}` : tag;
+      if (newPromptText.length <= MAX_PROMPT_LENGTH) {
+        setCustomPrompt(newPromptText);
+      }
+    }
+  };
+
+  const handlePromptChange = (value: string) => {
+    if (value.length <= MAX_PROMPT_LENGTH) {
+      setCustomPrompt(value);
+      // Update selected tags based on prompt content
+      const promptTags = PREDEFINED_TAGS.filter(tag => 
+        value.toLowerCase().includes(tag.toLowerCase())
+      );
+      setSelectedTags(promptTags.slice(0, 5));
     }
   };
 
   const handleGenerate = async () => {
-    if (!systemName.trim() || selectedTags.length === 0) {
-      alert('Please provide a system name and select at least one tag.');
+    if (!systemName.trim()) {
+      alert('Please provide a system name.');
+      return;
+    }
+
+    if (!customPrompt.trim() && selectedTags.length === 0) {
+      alert('Please enter a custom prompt or select at least one style tag.');
       return;
     }
 
@@ -151,11 +183,40 @@ export default function CreatePage() {
               />
             </div>
 
-            {/* Tag Selection */}
+            {/* Custom Prompt */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-3">
+                <label htmlFor="customPrompt" className="block text-sm font-bold text-gray-800 uppercase tracking-wide">
+                  Design Prompt *
+                </label>
+                <span className={`text-xs px-3 py-1 rounded-full font-medium ${
+                  customPrompt.length > MAX_PROMPT_LENGTH * 0.9
+                    ? 'bg-red-100 text-red-700'
+                    : customPrompt.length > MAX_PROMPT_LENGTH * 0.7
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {customPrompt.length}/{MAX_PROMPT_LENGTH}
+                </span>
+              </div>
+              <textarea
+                id="customPrompt"
+                value={customPrompt}
+                onChange={(e) => handlePromptChange(e.target.value)}
+                placeholder="Describe your design system... (e.g., modern minimalist interface with rounded corners, soft shadows, and pastel colors)"
+                rows={4}
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200 resize-none"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Describe the style and feel you want for your design system. Click style tags below to add them to your prompt.
+              </p>
+            </div>
+
+            {/* Style Tags */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-3">
                 <label className="block text-sm font-bold text-gray-800 uppercase tracking-wide">
-                  Style Tags *
+                  Quick Style Tags
                 </label>
                 <span className={`text-xs px-3 py-1 rounded-full font-medium ${
                   selectedTags.length === 5 
@@ -165,24 +226,49 @@ export default function CreatePage() {
                   {selectedTags.length}/5
                 </span>
               </div>
-              <div className="grid grid-cols-1 gap-3">
+              <p className="text-xs text-gray-500 mb-4">
+                Click tags to add them to your prompt. These will help guide the AI generation.
+              </p>
+              
+              {/* Selected Tags as Pills */}
+              {selectedTags.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-gray-700 mb-2">Selected:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 text-sm px-3 py-1.5 rounded-full font-medium border border-blue-200"
+                      >
+                        {tag}
+                        <button
+                          onClick={() => handleTagToggle(tag)}
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Available Tags */}
+              <div className="flex flex-wrap gap-2">
                 {PREDEFINED_TAGS.map((tag) => (
                   <button
                     key={tag}
                     onClick={() => handleTagToggle(tag)}
                     disabled={!selectedTags.includes(tag) && selectedTags.length >= 5}
-                    className={`px-4 py-3 text-sm rounded-xl border-2 transition-all duration-200 text-left ${
+                    className={`px-3 py-2 text-sm rounded-full border transition-all duration-200 ${
                       selectedTags.includes(tag)
-                        ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-blue-300 shadow-sm'
-                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed'
+                        ? 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 border-blue-200 opacity-50'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed'
                     }`}
                   >
-                    <span className="font-medium">{tag}</span>
-                    {selectedTags.includes(tag) && (
-                      <svg className="w-4 h-4 float-right mt-0.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
+                    {tag}
                   </button>
                 ))}
               </div>
@@ -224,7 +310,7 @@ export default function CreatePage() {
             {/* Generate Button */}
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || !systemName.trim() || selectedTags.length === 0}
+              disabled={isGenerating || !systemName.trim() || (!customPrompt.trim() && selectedTags.length === 0)}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-bold text-lg hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none transition-all duration-200 flex items-center justify-center"
             >
               {isGenerating ? (
