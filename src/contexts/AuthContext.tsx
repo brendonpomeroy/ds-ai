@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState } from 'react'
+import React, { createContext, useEffect, useState, useCallback } from 'react'
 import type { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
@@ -29,6 +29,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const createProfile = useCallback(async (userId: string) => {
+    try {
+      // Get user metadata from auth
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) return
+
+      const username = user.user_metadata?.username || user.email?.split('@')[0] || 'user'
+      const firstName = user.user_metadata?.firstName || ''
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          username,
+          first_name: firstName
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating profile:', error)
+        setProfile(null)
+      } else {
+        setProfile(data)
+      }
+    } catch (error) {
+      console.error('Error creating profile:', error)
+      setProfile(null)
+    }
+  }, [])
+
+  const fetchProfile = useCallback(async (userId: string) => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error) {
+        // If profile doesn't exist, create it
+        if (error.code === 'PGRST116') {
+          await createProfile(userId)
+        } else {
+          console.error('Error fetching profile:', error)
+          setProfile(null)
+        }
+      } else {
+        setProfile(data)
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+      setProfile(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [createProfile])
+
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -57,41 +117,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
-
-  const fetchProfile = async (userId: string) => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      if (error) {
-        console.error('Error fetching profile:', error)
-        setProfile(null)
-      } else {
-        setProfile(data)
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error)
-      setProfile(null)
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [fetchProfile])
 
   const signUp = async (email: string, password: string, username: string, firstName?: string) => {
     try {
       setLoading(true)
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            username,
-            firstName
+            username: username,
+            firstName: firstName || ''
           }
         }
       })
@@ -100,21 +137,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error }
       }
 
-      // Create profile after successful signup
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            username,
-            first_name: firstName || null,
-          })
-
-        if (profileError) {
-          console.error('Error creating profile:', profileError)
-          return { error: new Error(profileError.message) as AuthError }
-        }
-      }
+      // The profile will be created automatically by the database trigger
+      // No need to manually insert into profiles table
 
       return { error: null }
     } catch (error) {
